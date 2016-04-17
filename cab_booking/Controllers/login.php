@@ -1,31 +1,93 @@
 <?php
-   include 'info.php';
+	//Start session
+    ini_set('display_errors', 1);
+    error_reporting(E_ALL);
+	session_start();
     
-   $con=  mysql_connect($server,$user,$password);
-    mysql_select_db('quickcabs');
-    
-   $pass = md5($_SERVER[password]);
-    
-   $sql = "select username,password from user where username='$_POST[username]' and password='$_POST[password]'";
-   $sql1 = "select username from user where username='$_POST[username]'";
-   
-   if($res = mysql_query($sql)) ;
-   $res1 = mysql_query($sql1);
-   
-   $rowcount = mysql_num_rows($res);
-   $rowcount1 = mysql_num_rows($res1);
-   
-   if($rowcount==0){
-       if($rowcount1==0){
-            header('Location: ../Views/home.php?userErr=incorrect&passErr=incorrect');
-       }
-       else{
-           header('Location: ../Views/home.php?passErr=incorrect');
-       }
-   }
-   else{
-       header('Location: ../Views/dashboard.php');
-   }
-
-   mysql_close($con);
+	//Include database connection details
+	require_once('connection.php');
+ 
+	//Array to store validation errors
+	$errmsg_arr = array();
+ 
+	//Validation error flag
+	$errflag = false;
+ 
+	//Function to sanitize values received from the form. Prevents SQL injection
+	function clean($str) {
+		$str = @trim($str);
+		if(get_magic_quotes_gpc()) {
+			$str = stripslashes($str);
+		}
+		return mysql_real_escape_string($str);
+	}
+ 
+	//Sanitize the POST values
+	$username = $_POST['username'];
+	$password = md5($_POST['password']);
+ 
+	//Input Validations
+	if($username == '') {
+		$errmsg_arr[] = 'Username missing';
+		$errflag = true;
+	}
+	if($password == '') {
+		$errmsg_arr[] = 'Password missing';
+		$errflag = true;
+	}
+ 
+	//If there are input validations, redirect back to the login form
+	if($errflag) {
+		$_SESSION['ERRMSG_ARR'] = $errmsg_arr;
+		session_write_close();
+		header("location: ../Views/home.php");
+		exit();
+	}
+ 
+	//Create query
+	$qry="SELECT * FROM user WHERE usename='$username' AND password='$password'";
+	$result=mysql_query($qry);
+ 
+	//Check whether the query was successful or not
+	if($result) {
+		if(mysql_num_rows($result) > 0) {
+			//Login Successful
+			session_regenerate_id();
+			$member = mysql_fetch_assoc($result);
+			$_SESSION['SESS_MEMBER_ID'] = $member['id'];
+			$_SESSION['SESS_USERNAME'] = $member['usename'];
+			$_SESSION['SESS_PASSWORD'] = $member['password'];
+            $_SESSION['SESS_FNAME'] = $member['first_name'];
+            $_SESSION['SESS_LNAME'] = $member['last_name'];
+            $_SESSION['SESS_ADDRESS'] = $member['address'];
+            $_SESSION['SESS_PHONE'] = $member['phone'];
+            $_SESSION['SESS_ROLE'] = $member['role'];
+			session_write_close();
+            if($_SESSION['SESS_ROLE']==1){
+                header('location: ../dashboard/index.php');
+			    exit();
+            }
+            else if($_SESSION['SESS_ROLE']==2){
+                header('location: ../dashboard/driver_index.php');
+			    exit();
+            }
+            else if($_SESSION['SESS_ROLE']==3){
+                header('location: ../dashboard/admin_index.php');
+			    exit();
+            }
+			
+		}else {
+			//Login failed
+			$errmsg_arr[] = 'user name and password not found';
+			$errflag = true;
+			if($errflag) {
+				$_SESSION['ERRMSG_ARR'] = $errmsg_arr;
+				session_write_close();
+				header("location: ../Views/home.php");
+				exit();
+			}
+		}
+	}else {
+		die("Query failed");
+	}
 ?>

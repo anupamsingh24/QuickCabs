@@ -1,5 +1,5 @@
 <?php 
     $server = 'localhost';
     $user = 'root';
-    $password = 'shubhkamna';
+    $password = 'shubhkamna'; 
 ?>
